@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "CleanerX"
+version = "1.0.0"
+id = "artifacts/cleanerx"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20233
+
+[services.development]
+run = "cd /home/runner/workspace/.migration-backup && ./node_modules/.bin/next dev -H 0.0.0.0 -p $PORT"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cleanerx", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cleanerx/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20233"
+BASE_PATH = "/"
