@@ -5,3 +5,4 @@
 3. `supabaseClient.js` mein apna Supabase URL aur API key paste karo.
 4. Replit par upload karo aur `npm install` run karo.
 5. `npm start` run karke test karo.
+CleanerX deployment test
