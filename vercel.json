@@ -1,7 +1,4 @@
 {
   "framework": "nextjs",
-  "nodeVersion": "22.x",
-  "installCommand": "npm install --prefix .migration-backup",
-  "buildCommand": "cd .migration-backup && npm run build",
-  "outputDirectory": ".migration-backup/.next"
+  "nodeVersion": "22.x"
 }

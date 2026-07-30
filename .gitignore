@@ -1,6 +1,16 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# Dependencies
+node_modules/
 
-# compiled output
+# Next.js build output
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build output
 dist
 tmp
 out-tsc
@@ -8,42 +18,44 @@ out-tsc
 .expo
 .expo-shared
 
-# dependencies
-node_modules
+# Caches
+.cache/
+*.log
+npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# Archives / backups (never allow these back in)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+ReplitExport-*
+*-backup/
+*_backup/
+backup-*/
+/extracted/
+extracted_zip/
+extracted_tar/
 
-# IDE - VSCode
+# Editor / OS files
+.DS_Store
+Thumbs.db
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-# misc
+.idea/
+*.swp
 /.sass-cache
 /connect.lock
 /coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
 /typings
 
-# System Files
-.DS_Store
-Thumbs.db
-
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
-
 # Replit
-.cache/
+.agents/
+attached_assets/
 .local/

@@ -11,10 +11,10 @@ paths = [ "/" ]
 localPort = 20233
 
 [services.development]
-run = "cd /home/runner/workspace/.migration-backup && ./node_modules/.bin/next dev -H 0.0.0.0 -p $PORT"
+run = "./node_modules/.bin/next dev -H 0.0.0.0 -p $PORT"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/cleanerx", "run", "build" ]
+build = [ "npm", "run", "build" ]
 serve = "static"
 publicDir = "artifacts/cleanerx/dist/public"
 
