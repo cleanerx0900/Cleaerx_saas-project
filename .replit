@@ -42,3 +42,9 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[userenv]
+
+[userenv.shared]
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcHp6emJiaHZ1b2xoeXR6ZnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNTk4MzksImV4cCI6MjA5ODczNTgzOX0.xbY_nSfvUwOJJSVS2KHzq7yNJy8aBaCl5innn_bjsh0"
+NEXT_PUBLIC_SUPABASE_URL = "https://lopzzzbbhvuolhytzfpt.supabase.co"
