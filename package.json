@@ -7,7 +7,6 @@
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
-  "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 5000",
     "build": "next build",
