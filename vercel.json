@@ -1,9 +1,5 @@
 {
   "framework": "nextjs",
-  "installCommand": "npm install",
-  "build": {
-    "env": {
-      "NODE_VERSION": "22"
-    }
-  }
+  "nodeVersion": "22.x",
+  "installCommand": "npm install"
 }
