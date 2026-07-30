@@ -29,16 +29,16 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Start application"
+args = "artifacts/cleanerx: web"
 
 [[workflows.workflow]]
-name = "Start application"
+name = "artifacts/cleanerx: web"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
+args = "./node_modules/.bin/next dev -H 0.0.0.0 -p 20233"
+waitForPort = 20233
 
 [workflows.workflow.metadata]
 outputType = "webview"
