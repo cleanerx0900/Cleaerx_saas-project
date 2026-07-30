@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 pnpm-lock.yaml
+pnpm-workspace.yaml
 
 # Next.js build output
 .next/
