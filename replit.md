@@ -1,45 +1,54 @@
-# [Project name]
+# CleanerX
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A multi-tenant SaaS platform for cleaning businesses — manages bookings, customer accounts, services, invoicing, and staff dashboards.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `npm run dev` — start Next.js dev server on port 5000 (the workflow uses port 20233)
+- `npm run build` — production build
+- `npm run start` — start production server
+
+The Replit workflow runs: `./node_modules/.bin/next dev -H 0.0.0.0 -p 20233`
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Next.js 16 (Pages Router), React 19, TypeScript
+- Tailwind CSS v4
+- Supabase (auth + database)
+- @react-pdf/renderer (invoice PDFs)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `pages/` — Next.js pages (routes)
+- `pages/api/` — API routes
+- `components/` — shared UI components (AdminLayout, DashboardLayout, etc.)
+- `contexts/` — React contexts (Auth, Tenant, Impersonation)
+- `lib/` — utilities, Supabase clients, pricing, brand helpers
+- `sql/` — database schema, migrations, seed data
+- `styles/globals.css` — global styles
+
+## Required Secrets
+
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon/public key
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key (server-side only)
+- `SESSION_SECRET` — cookie signing secret (already set)
+
+Optional:
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` — WhatsApp notifications
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Multi-tenant: tenant context resolved from subdomain/cookie, injected via `TenantContext`
+- Supabase used for both auth and database (Row Level Security applies)
+- Admin and customer-facing areas share the same Next.js app, separated by route (`/admin`, `/dashboard`)
+- PDF invoices generated server-side with @react-pdf/renderer
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_Populate as you build._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `NEXT_PUBLIC_*` vars are baked into the client bundle at build time — changes require a rebuild
+- Middleware uses the deprecated "middleware" file convention; Next.js recommends renaming to "proxy"
