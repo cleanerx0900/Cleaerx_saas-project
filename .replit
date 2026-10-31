@@ -1,0 +1,50 @@
+modules = ["nodejs-20", "web"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/cleanerx: web"
+
+[[workflows.workflow]]
+name = "artifacts/cleanerx: web"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./node_modules/.bin/next dev -H 0.0.0.0 -p 20233"
+waitForPort = 20233
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[userenv]
+
+[userenv.shared]
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcHp6emJiaHZ1b2xoeXR6ZnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNTk4MzksImV4cCI6MjA5ODczNTgzOX0.xbY_nSfvUwOJJSVS2KHzq7yNJy8aBaCl5innn_bjsh0"
+NEXT_PUBLIC_SUPABASE_URL = "https://lopzzzbbhvuolhytzfpt.supabase.co"

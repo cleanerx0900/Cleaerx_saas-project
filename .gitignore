@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Next.js build output
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+
+# Caches
+.cache/
+*.log
+npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archives / backups (never allow these back in)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+ReplitExport-*
+*-backup/
+*_backup/
+backup-*/
+/extracted/
+extracted_zip/
+extracted_tar/
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+/.sass-cache
+/connect.lock
+/coverage
+/typings
+
+# Replit
+.agents/
+attached_assets/
+.local/
