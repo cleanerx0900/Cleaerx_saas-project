@@ -43,9 +43,8 @@
 --   2. Platform Super Admin UI:
 --      An authenticated platform operator holding super_admin role can manage admins via the
 --      platform console (auth.role() = 'authenticated' AND public.is_super_admin() = true).
---   3. Explicit Administrative Override (Audited Tooling):
---      Ordinary backend service_role requests CANNOT grant super_admin. Dedicated maintenance
---      scripts must explicitly set transaction-local config 'cleanerx.admin_provisioning_authorized' = 'true'.
+--   Notice: Generic service_role PostgREST requests from ordinary backend API routes are strictly
+--   BLOCKED from creating, modifying, or deleting super_admin accounts.
 -- ------------------------------------------------------------
 
 
@@ -115,10 +114,16 @@ CREATE POLICY "company_owner_delete_users" ON public.users
 --    - Queries auth.role() first.
 --    - Falls back to request.jwt.claims JSON (modern PostgREST v9+ standard).
 --    - Falls back to request.jwt.claim.role (legacy PostgREST individual setting).
--- 4. No Generic service_role Exemption:
+--    - Safely handles missing, empty, or malformed JSON payloads without throwing uncaught exceptions.
+-- 4. No Generic service_role Exemption & No Insecure Custom GUC Overrides:
 --    Standard backend API routes using SUPABASE_SERVICE_ROLE_KEY cannot grant or modify super_admin.
---    Only authorized administrative processes (Direct SQL sessions, authenticated super admins,
---    or explicit administrative provisioning scripts) are permitted.
+--    Only authorized administrative processes (Direct SQL sessions or authenticated super admins)
+--    are permitted.
+-- 5. Strict TG_OP Branching & Correct Return Values:
+--    - TG_OP = 'INSERT': Validates NEW.role, returns NEW.
+--    - TG_OP = 'UPDATE': Validates NEW.role & OLD.role, returns NEW.
+--    - TG_OP = 'DELETE': Validates OLD.role only (NEW is NULL on DELETE), and returns OLD.
+--      (Returning NULL on BEFORE DELETE would cancel the delete operation; returning OLD allows it).
 CREATE OR REPLACE FUNCTION public.protect_super_admin_role()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -129,7 +134,6 @@ DECLARE
   v_jwt_role text;
   v_is_direct_admin boolean;
   v_is_caller_super_admin boolean;
-  v_is_admin_override boolean;
 BEGIN
   -- 1. Multi-layer JWT role resolution (handles Supabase auth.role(), PostgREST v9+ JSON claims, and legacy GUCs)
   BEGIN
@@ -156,36 +160,51 @@ BEGIN
 
   -- 2. Trusted Caller Identification:
   -- A. Direct administrative database session (psql / Supabase SQL Editor / migrations)
-  --    session_user is the physical database connection user and does NOT change
-  --    inside SECURITY DEFINER functions. PostgREST always connects as 'authenticator'.
+  --    session_user is the physical database connection user ('postgres' or 'supabase_admin')
+  --    and does NOT change inside SECURITY DEFINER functions. PostgREST always connects as 'authenticator'.
   v_is_direct_admin := (pg_catalog.session_user IN ('postgres', 'supabase_admin') AND v_jwt_role IS NULL);
 
   -- B. Platform Super Admin (authenticated web user holding super_admin role)
   v_is_caller_super_admin := (v_jwt_role = 'authenticated' AND public.is_super_admin());
 
-  -- C. Explicit Administrative Provisioning Override:
-  --    Normal PostgREST service_role requests CANNOT grant super_admin.
-  --    Only dedicated administrative tooling that explicitly sets this transaction flag is allowed.
-  v_is_admin_override := (
-    v_jwt_role = 'service_role'
-    AND pg_catalog.current_setting('cleanerx.admin_provisioning_authorized', true) = 'true'
-  );
-
-  -- 3. Guard against unauthorized super_admin creation or promotion
-  IF NEW.role = 'super_admin' AND (TG_OP = 'INSERT' OR OLD.role IS DISTINCT FROM NEW.role) THEN
-    IF NOT (v_is_direct_admin OR v_is_caller_super_admin OR v_is_admin_override) THEN
-      RAISE EXCEPTION 'Access denied: ordinary service_role API requests and tenant users cannot grant or assume the super_admin role. Use the documented administrative provisioning process or platform super_admin account.';
+  -- 3. Operation-specific guards and return value handling
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.role = 'super_admin' THEN
+      IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
+        RAISE EXCEPTION 'Access denied: ordinary service_role API requests and tenant users cannot grant or assume the super_admin role. Use the documented direct administrative SQL provisioning process or platform super_admin account.';
+      END IF;
     END IF;
+    RETURN NEW;
+
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- Prevent unauthorized promotion to super_admin
+    IF NEW.role = 'super_admin' AND OLD.role IS DISTINCT FROM NEW.role THEN
+      IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
+        RAISE EXCEPTION 'Access denied: ordinary service_role API requests and tenant users cannot grant or assume the super_admin role. Use the documented direct administrative SQL provisioning process or platform super_admin account.';
+      END IF;
+    END IF;
+
+    -- Prevent unauthorized modification or demotion of existing super_admin accounts
+    IF OLD.role = 'super_admin' THEN
+      IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
+        RAISE EXCEPTION 'Access denied: cannot modify or demote a super_admin user without direct administrative SQL provisioning or platform super_admin authorization.';
+      END IF;
+    END IF;
+    RETURN NEW;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    -- Prevent unauthorized deletion of existing super_admin accounts
+    -- (Notice: NEW is NULL on DELETE; only OLD.role is inspected)
+    IF OLD.role = 'super_admin' THEN
+      IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
+        RAISE EXCEPTION 'Access denied: cannot delete a super_admin user without direct administrative SQL provisioning or platform super_admin authorization.';
+      END IF;
+    END IF;
+    -- In PostgreSQL BEFORE DELETE triggers, returning OLD allows the deletion to proceed.
+    RETURN OLD;
   END IF;
 
-  -- 4. Guard against unauthorized modification or deletion of existing super_admin accounts
-  IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.role = 'super_admin' THEN
-    IF NOT (v_is_direct_admin OR v_is_caller_super_admin OR v_is_admin_override) THEN
-      RAISE EXCEPTION 'Access denied: cannot modify or delete a super_admin user without administrative provisioning or platform super_admin authorization.';
-    END IF;
-  END IF;
-
-  RETURN NEW;
+  RETURN NULL;
 END;
 $$;
 
