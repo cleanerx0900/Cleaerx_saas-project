@@ -1,0 +1,318 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Login page animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-18px) rotate(3deg); }
+  66%       { transform: translateY(-8px) rotate(-2deg); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-24px) scale(1.04); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(47, 174, 246, 0.45); }
+  70%  { box-shadow: 0 0 0 10px rgba(47, 174, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(47, 174, 246, 0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── New: table rows / dropdown / skeleton / page ── */
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.anim-row-in     { animation: rowIn  0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-drop-in    { animation: dropIn 0.15s cubic-bezier(0.16, 1, 0.3,  1) both; }
+.anim-page-in    { animation: fadeIn 0.25s ease both; }
+
+@keyframes emptyStateIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes emptyIconIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.82); }
+  70%  { transform: translateY(-2px) scale(1.04); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.anim-empty-state { animation: emptyStateIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-empty-icon  { animation: emptyIconIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both; }
+
+/* Skeleton shimmer — use on placeholder divs while data is loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f4f8 25%, #e8edf3 50%, #f0f4f8 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ── New: modal / error / spinner ── */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes errorSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
+.anim-fade-in      { animation: fadeIn  0.6s ease both; }
+.anim-slide-up     { animation: slideUp 0.6s cubic-bezier(.22,.68,0,1.2) both; }
+.anim-slide-right  { animation: slideRight 0.7s cubic-bezier(.22,.68,0,1.2) both; }
+.anim-scale-in     { animation: scaleIn    0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.anim-backdrop-in  { animation: backdropIn 0.18s ease both; }
+.anim-error-in     { animation: errorSlideIn 0.22s ease both; }
+
+.anim-delay-1 { animation-delay: 0.08s; }
+.anim-delay-2 { animation-delay: 0.18s; }
+.anim-delay-3 { animation-delay: 0.28s; }
+.anim-delay-4 { animation-delay: 0.42s; }
+
+.float-1 { animation: float     6s ease-in-out infinite; }
+.float-2 { animation: floatSlow 9s ease-in-out infinite; animation-delay: -3s; }
+.float-3 { animation: float     7s ease-in-out infinite; animation-delay: -2s; }
+
+.spin-slow { animation: spin-slow 18s linear infinite; }
+
+/* Button loading spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btnSpin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+.btn-spinner-muted {
+  border-color: rgba(0, 113, 189, 0.25);
+  border-top-color: #0071BD;
+}
+
+.btn-shimmer {
+  background: linear-gradient(
+    90deg,
+    #2FAEF6 0%, #63C2F8 40%, #2FAEF6 60%, #0B6FB8 100%
+  );
+  background-size: 200% auto;
+  transition: background-position 0.4s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-shimmer:hover {
+  background-position: right center;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(47, 174, 246, 0.45);
+}
+.btn-shimmer:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.input-field {
+  width: 100%;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 13px 16px 13px 44px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: #fafafa;
+  color: #0A1F44;
+}
+.input-field:focus {
+  border-color: #2FAEF6;
+  box-shadow: 0 0 0 3px rgba(47, 174, 246, 0.18);
+  background: #fff;
+}
+.input-field::placeholder { color: #9ca3af; }
+
+/* ── Booking page animations ── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes expandDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes totalPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+@keyframes waGlow {
+  0%, 100% { box-shadow: 0 6px 18px rgba(37, 211, 102, 0.30); }
+  50%       { box-shadow: 0 8px 28px rgba(37, 211, 102, 0.55); }
+}
+
+@keyframes successBounce {
+  from { opacity: 0; transform: scale(0.88) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.anim-card-in     { animation: cardIn       0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-expand-down { animation: expandDown   0.22s cubic-bezier(0.16, 1, 0.3,  1) both; }
+.anim-total-pop   { animation: totalPop     0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.anim-success-in  { animation: successBounce 0.40s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Staggered card entrance delays */
+.card-delay-0 { animation-delay:   0ms; }
+.card-delay-1 { animation-delay:  50ms; }
+.card-delay-2 { animation-delay: 100ms; }
+.card-delay-3 { animation-delay: 150ms; }
+.card-delay-4 { animation-delay: 200ms; }
+.card-delay-5 { animation-delay: 250ms; }
+.card-delay-6 { animation-delay: 300ms; }
+.card-delay-7 { animation-delay: 340ms; }
+
+/* Service card hover lift — works with Tailwind's `transition` */
+.service-card {
+  cursor: pointer;
+  will-change: transform;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.18s ease,
+              border-color 0.18s ease,
+              background-color 0.18s ease;
+}
+.service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08) !important;
+}
+.service-card:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Booking input focus ring */
+.booking-input {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+.booking-input:focus {
+  box-shadow: 0 0 0 3px rgba(8, 113, 189, 0.14);
+  background-color: #fff;
+}
+
+/* Time slot button hover */
+.time-slot-btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.time-slot-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.time-slot-btn:active {
+  transform: scale(0.97);
+}
+
+/* Submit / primary booking button */
+.booking-submit-btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.booking-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(8, 113, 189, 0.35) !important;
+}
+.booking-submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* WhatsApp button — subtle ambient glow + lift on hover */
+.wa-btn {
+  animation: waGlow 2.8s ease-in-out infinite;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.wa-btn:hover {
+  animation: none;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(37, 211, 102, 0.45) !important;
+}
+.wa-btn:active {
+  animation: none;
+  transform: scale(0.98);
+}
+
+/* ── Admin / Dashboard action icon buttons ── */
+.action-btn {
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+              background-color 0.14s ease,
+              box-shadow 0.12s ease;
+}
+.action-btn:hover:not(:disabled) {
+  transform: scale(1.12);
+}
+.action-btn:active:not(:disabled) {
+  transform: scale(0.91);
+}
+
+/* ── Improved focus ring for selects ── */
+.select-field {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.select-field:focus {
+  box-shadow: 0 0 0 3px rgba(56, 182, 255, 0.18);
+}
+
+/* ── SaaS card polish: subtle hover lift ── */
+.card-hover {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+}

@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Caches
+.cache/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archives / backups / exports (root cause of past bloat — never allow these back in)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+ReplitExport-*
+ReplitExport-*.tar.gz
+ReplitExport-*/
+*-backup/
+*_backup/
+backup-*/
+/extracted/
+extracted_zip/
+extracted_tar/
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Replit AI scratch (not part of the app)
+.agents/
+attached_assets/
