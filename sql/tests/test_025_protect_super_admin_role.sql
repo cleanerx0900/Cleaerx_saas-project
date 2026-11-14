@@ -23,6 +23,7 @@ DO $$
 DECLARE
   v_test_company_id uuid := '11111111-1111-1111-1111-111111111111';
   v_owner_id        uuid := '22222222-2222-2222-2222-222222222222';
+  v_second_owner_id uuid := '22222222-2222-2222-2222-222222222223';
   v_staff_id        uuid := '33333333-3333-3333-3333-333333333333';
   v_admin_id        uuid := '44444444-4444-4444-4444-444444444444';
   v_second_admin_id uuid := '44444444-4444-4444-4444-444444444445';
@@ -158,6 +159,10 @@ BEGIN
   INSERT INTO public.users (id, email, full_name, role, is_active, company_id)
   VALUES (v_staff_id, 'staff@cleanerx.local', 'Company Staff', 'company_staff', true, v_test_company_id)
   ON CONFLICT (id) DO UPDATE SET role = 'company_staff', company_id = v_test_company_id;
+
+  INSERT INTO public.users (id, email, full_name, role, is_active, company_id)
+  VALUES (v_second_owner_id, 'owner2@cleanerx.local', 'Secondary Owner', 'company_owner', true, v_test_company_id)
+  ON CONFLICT (id) DO UPDATE SET role = 'company_owner', company_id = v_test_company_id;
 
   -- Simulate authenticated owner session
   PERFORM set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', v_owner_id)::text, true);
@@ -319,7 +324,26 @@ BEGIN
   END IF;
 
   -- ------------------------------------------------------------
-  -- TEST 15: Malformed JSON Claims Payload Handling
+  -- TEST 15: Company Owner Attempting to DELETE Another Company Owner
+  -- Context: session_user = 'authenticator', role = 'authenticated' (v_owner_id)
+  -- Policy: company_owner_delete_users strictly enforces role = 'company_staff'
+  -- Expected: BLOCKED (0 rows deleted / RLS violation)
+  -- ------------------------------------------------------------
+  PERFORM set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', v_owner_id)::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+  PERFORM set_config('request.jwt.claim.sub', v_owner_id::text, true);
+
+  DELETE FROM public.users WHERE id = v_second_owner_id;
+  GET DIAGNOSTICS v_row_count = ROW_COUNT;
+
+  IF v_row_count = 0 THEN
+    RAISE NOTICE '✓ TEST 15 PASSED: Company owner was strictly blocked from deleting another company owner (ROW_COUNT = 0).';
+  ELSE
+    RAISE EXCEPTION 'TEST 15 FAILED: Company owner was able to delete another owner! (ROW_COUNT = %)', v_row_count;
+  END IF;
+
+  -- ------------------------------------------------------------
+  -- TEST 16: Malformed JSON Claims Payload Handling
   -- Context: session_user = 'authenticator', request.jwt.claims contains invalid JSON
   -- Expected: Fails closed safely (Raises Access denied, does NOT crash with unhandled syntax error)
   -- ------------------------------------------------------------
@@ -330,18 +354,18 @@ BEGIN
     INSERT INTO public.users (id, email, full_name, role, is_active)
     VALUES (v_anon_target_id, 'malformed_exploit@cleanerx.local', 'Malformed Exploit', 'super_admin', true);
 
-    RAISE EXCEPTION 'TEST 15 FAILED: Request with malformed claims was able to insert super_admin!';
+    RAISE EXCEPTION 'TEST 16 FAILED: Request with malformed claims was able to insert super_admin!';
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLERRM LIKE '%Access denied%' THEN
-        RAISE NOTICE '✓ TEST 15 PASSED: Malformed claims payload failed closed safely.';
+        RAISE NOTICE '✓ TEST 16 PASSED: Malformed claims payload failed closed safely.';
       ELSE
-        RAISE EXCEPTION 'TEST 15 FAILED with unexpected error: %', SQLERRM;
+        RAISE EXCEPTION 'TEST 16 FAILED with unexpected error: %', SQLERRM;
       END IF;
   END;
 
   RAISE NOTICE '============================================================';
-  RAISE NOTICE 'ALL 15 POSTGRESQL INTEGRATION TEST SCENARIOS PASSED!';
+  RAISE NOTICE 'ALL 16 POSTGRESQL INTEGRATION TEST SCENARIOS PASSED!';
   RAISE NOTICE '============================================================';
 END $$;
 

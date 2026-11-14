@@ -92,13 +92,14 @@ CREATE POLICY "company_owner_update_users" ON public.users
     AND role IN ('company_owner', 'company_staff')
   );
 
--- 1.5 DELETE: Company owners can remove staff within their own company (never super_admin).
+-- 1.5 DELETE: Company owners can ONLY remove company_staff within their own company.
+-- They CANNOT delete other company owners or super_admin accounts.
 CREATE POLICY "company_owner_delete_users" ON public.users
   FOR DELETE TO authenticated
   USING (
     company_id = public.auth_company_id()
     AND public.is_company_admin()
-    AND role IN ('company_owner', 'company_staff')
+    AND role = 'company_staff'
   );
 
 -- 1.6 Database-level Trigger for Defense-in-Depth against Role Escalation
@@ -160,9 +161,10 @@ BEGIN
 
   -- 2. Trusted Caller Identification:
   -- A. Direct administrative database session (psql / Supabase SQL Editor / migrations)
-  --    session_user is the physical database connection user ('postgres' or 'supabase_admin')
-  --    and does NOT change inside SECURITY DEFINER functions. PostgREST always connects as 'authenticator'.
-  v_is_direct_admin := (pg_catalog.session_user IN ('postgres', 'supabase_admin') AND v_jwt_role IS NULL);
+  --    session_user is the SQL standard special keyword for the physical connection user
+  --    ('postgres' or 'supabase_admin') and does NOT change inside SECURITY DEFINER functions.
+  --    PostgREST always connects as 'authenticator'.
+  v_is_direct_admin := (session_user IN ('postgres', 'supabase_admin') AND v_jwt_role IS NULL);
 
   -- B. Platform Super Admin (authenticated web user holding super_admin role)
   v_is_caller_super_admin := (v_jwt_role = 'authenticated' AND public.is_super_admin());
