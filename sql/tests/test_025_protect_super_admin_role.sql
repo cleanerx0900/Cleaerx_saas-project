@@ -199,6 +199,25 @@ BEGIN
   END;
 
   -- ------------------------------------------------------------
+  -- TEST 7B: Authenticated Company Owner Attempting to Promote Staff to company_owner
+  -- Context: session_user = 'authenticator', role = 'authenticated' (owner)
+  -- Policy: company_owner_update_staff strictly enforces role = 'company_staff'
+  -- Trigger: protect_super_admin_role prevents non-super-admins from changing roles
+  -- Expected: BLOCKED (Raises Access denied or RLS violation)
+  -- ------------------------------------------------------------
+  BEGIN
+    UPDATE public.users SET role = 'company_owner' WHERE id = v_staff_id;
+    RAISE EXCEPTION 'TEST 7B FAILED: Company owner was able to promote staff to company_owner!';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLERRM LIKE '%Access denied%' OR SQLERRM LIKE '%violates row-level security policy%' THEN
+        RAISE NOTICE '✓ TEST 7B PASSED: Company owner was strictly blocked from promoting staff to company_owner.';
+      ELSE
+        RAISE EXCEPTION 'TEST 7B FAILED with unexpected error: %', SQLERRM;
+      END IF;
+  END;
+
+  -- ------------------------------------------------------------
   -- TEST 8: Authenticated Company Staff Attempting Role Escalation
   -- Context: session_user = 'authenticator', role = 'authenticated', user is staff
   -- Expected: BLOCKED (Raises Access denied or RLS violation)

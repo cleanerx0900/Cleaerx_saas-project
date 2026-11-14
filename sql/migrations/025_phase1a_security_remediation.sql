@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 025: Phase 1A Critical Security Remediation
 -- Fixes:
---   1. RLS-01: Prevent company owners/staff from escalating role to super_admin
+--   1. RLS-01: Prevent company owners/staff from escalating role to super_admin or company_owner
 --   2. RLS-02: Block direct anonymous PostgREST INSERT into bookings and booking_items
 -- Depends on: 001_core_tenant_layer, 007_rls_policies, functions/auth_helpers.sql
 -- Safe to re-run: All statements are idempotent (DROP IF EXISTS + CREATE OR REPLACE)
@@ -23,13 +23,9 @@
 --
 -- SAFE ROLLBACK PROCEDURE (Standard Maintenance):
 -- If you need to revert or re-tune the Phase 1A database policies without weakening security:
---   -- A. Drop the trigger temporarily if debugging user table modifications:
 --   DROP TRIGGER IF EXISTS trg_protect_super_admin_role ON public.users;
 --   DROP FUNCTION IF EXISTS public.protect_super_admin_role();
---
---   -- B. Keep granular role constraints on users table in place (NEVER remove role IN check):
---   -- The granular policies (company_owner_select_users, company_owner_insert_users,
---   -- company_owner_update_users, company_owner_delete_users) safely maintain tenant isolation.
+-- (Keep granular role constraints on public.users in place).
 --
 -- DOCUMENTED ADMINISTRATIVE PROVISIONING PROCESS:
 -- To provision or promote a platform super_admin user:
@@ -49,15 +45,17 @@
 
 
 -- ============================================================
--- SECTION 1: RLS-01 — Super Admin Role Protection (public.users)
+-- SECTION 1: RLS-01 — Role Protection & Tenant Isolation (public.users)
 -- ============================================================
 
--- 1.1 Remove the blanket FOR ALL policy that allowed company owners to update the role column
+-- 1.1 Remove blanket and legacy policies on public.users
 DROP POLICY IF EXISTS "company_owner_manage_users" ON public.users;
 DROP POLICY IF EXISTS "company_owner_select_users" ON public.users;
 DROP POLICY IF EXISTS "company_owner_insert_users" ON public.users;
 DROP POLICY IF EXISTS "company_owner_update_users" ON public.users;
 DROP POLICY IF EXISTS "company_owner_delete_users" ON public.users;
+DROP POLICY IF EXISTS "company_owner_update_staff" ON public.users;
+DROP POLICY IF EXISTS "company_owner_update_self"  ON public.users;
 
 -- 1.2 SELECT: Company owners can view all users within their assigned company
 CREATE POLICY "company_owner_select_users" ON public.users
@@ -67,29 +65,45 @@ CREATE POLICY "company_owner_select_users" ON public.users
     AND public.is_company_admin()
   );
 
--- 1.3 INSERT: Company owners can add staff or secondary owners to their own company only.
--- Role MUST NOT be 'super_admin'.
+-- 1.3 INSERT: Company owners can add staff to their own company only.
+-- Role MUST strictly be 'company_staff'. Only Super Admin provisions 'company_owner' or 'super_admin'.
 CREATE POLICY "company_owner_insert_users" ON public.users
   FOR INSERT TO authenticated
   WITH CHECK (
     company_id = public.auth_company_id()
     AND public.is_company_admin()
-    AND role IN ('company_owner', 'company_staff')
+    AND role = 'company_staff'
   );
 
--- 1.4 UPDATE: Company owners can manage profiles and staff within their own company only.
--- Target row role MUST NOT be changed to or from 'super_admin'.
-CREATE POLICY "company_owner_update_users" ON public.users
+-- 1.4 UPDATE: Granular policies preventing role escalation while allowing legitimate profile updates:
+-- A. Owner managing company staff: target role must be 'company_staff', and must remain 'company_staff'.
+CREATE POLICY "company_owner_update_staff" ON public.users
   FOR UPDATE TO authenticated
   USING (
     company_id = public.auth_company_id()
     AND public.is_company_admin()
-    AND role IN ('company_owner', 'company_staff')
+    AND role = 'company_staff'
   )
   WITH CHECK (
     company_id = public.auth_company_id()
     AND public.is_company_admin()
-    AND role IN ('company_owner', 'company_staff')
+    AND role = 'company_staff'
+  );
+
+-- B. Owner managing their own profile: can update name/profile, but role MUST remain 'company_owner'.
+CREATE POLICY "company_owner_update_self" ON public.users
+  FOR UPDATE TO authenticated
+  USING (
+    id = auth.uid()
+    AND company_id = public.auth_company_id()
+    AND public.is_company_admin()
+    AND role = 'company_owner'
+  )
+  WITH CHECK (
+    id = auth.uid()
+    AND company_id = public.auth_company_id()
+    AND public.is_company_admin()
+    AND role = 'company_owner'
   );
 
 -- 1.5 DELETE: Company owners can ONLY remove company_staff within their own company.
@@ -103,28 +117,8 @@ CREATE POLICY "company_owner_delete_users" ON public.users
   );
 
 -- 1.6 Database-level Trigger for Defense-in-Depth against Role Escalation
--- Prevents any non-super-admin actor from assuming or assigning the super_admin role.
---
--- CRITICAL SECURITY ARCHITECTURE & HARDENING:
--- 1. Safe search_path: SET search_path = '' eliminates search-path hijacking attacks.
---    All catalog objects, functions, and tables are strictly schema-qualified.
--- 2. No current_user Reliance: Inside a SECURITY DEFINER function, current_user automatically
---    switches to the function owner ('postgres'). Using current_user for authorization would
---    create a critical bypass. Therefore, current_user is NEVER used for caller verification.
--- 3. Robust PostgREST/Supabase JWT Claim Extraction:
---    - Queries auth.role() first.
---    - Falls back to request.jwt.claims JSON (modern PostgREST v9+ standard).
---    - Falls back to request.jwt.claim.role (legacy PostgREST individual setting).
---    - Safely handles missing, empty, or malformed JSON payloads without throwing uncaught exceptions.
--- 4. No Generic service_role Exemption & No Insecure Custom GUC Overrides:
---    Standard backend API routes using SUPABASE_SERVICE_ROLE_KEY cannot grant or modify super_admin.
---    Only authorized administrative processes (Direct SQL sessions or authenticated super admins)
---    are permitted.
--- 5. Strict TG_OP Branching & Correct Return Values:
---    - TG_OP = 'INSERT': Validates NEW.role, returns NEW.
---    - TG_OP = 'UPDATE': Validates NEW.role & OLD.role, returns NEW.
---    - TG_OP = 'DELETE': Validates OLD.role only (NEW is NULL on DELETE), and returns OLD.
---      (Returning NULL on BEFORE DELETE would cancel the delete operation; returning OLD allows it).
+-- Prevents any non-super-admin actor from assuming or assigning the super_admin role,
+-- and prevents non-super-admins from changing existing user roles.
 CREATE OR REPLACE FUNCTION public.protect_super_admin_role()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -161,7 +155,7 @@ BEGIN
 
   -- 2. Trusted Caller Identification:
   -- A. Direct administrative database session (psql / Supabase SQL Editor / migrations)
-  --    session_user is the SQL standard special keyword for the physical connection user
+  --    session_user is the SQL standard keyword for the physical connection user
   --    ('postgres' or 'supabase_admin') and does NOT change inside SECURITY DEFINER functions.
   --    PostgREST always connects as 'authenticator'.
   v_is_direct_admin := (session_user IN ('postgres', 'supabase_admin') AND v_jwt_role IS NULL);
@@ -179,14 +173,21 @@ BEGIN
     RETURN NEW;
 
   ELSIF TG_OP = 'UPDATE' THEN
-    -- Prevent unauthorized promotion to super_admin
+    -- Prevent unauthorized promotion to super_admin or unauthorized role modification
     IF NEW.role = 'super_admin' AND OLD.role IS DISTINCT FROM NEW.role THEN
       IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
         RAISE EXCEPTION 'Access denied: ordinary service_role API requests and tenant users cannot grant or assume the super_admin role. Use the documented direct administrative SQL provisioning process or platform super_admin account.';
       END IF;
     END IF;
 
-    -- Prevent unauthorized modification or demotion of existing super_admin accounts
+    -- Prevent non-super-admins from changing any user's role
+    IF OLD.role IS DISTINCT FROM NEW.role THEN
+      IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
+        RAISE EXCEPTION 'Access denied: user role changes can only be performed by platform administrators.';
+      END IF;
+    END IF;
+
+    -- Prevent unauthorized modification of existing super_admin accounts
     IF OLD.role = 'super_admin' THEN
       IF NOT (v_is_direct_admin OR v_is_caller_super_admin) THEN
         RAISE EXCEPTION 'Access denied: cannot modify or demote a super_admin user without direct administrative SQL provisioning or platform super_admin authorization.';
@@ -210,9 +211,10 @@ BEGIN
 END;
 $$;
 
--- Explicit ownership and execution privilege hardening
+-- 1.7 Explicit ownership and execution privilege hardening
 ALTER FUNCTION public.protect_super_admin_role() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.protect_super_admin_role() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.protect_super_admin_role() FROM anon;
 GRANT EXECUTE ON FUNCTION public.protect_super_admin_role() TO authenticated, service_role;
 
 DROP TRIGGER IF EXISTS trg_protect_super_admin_role ON public.users;
@@ -233,23 +235,34 @@ COMMENT ON FUNCTION public.protect_super_admin_role() IS
 -- (/api/create-pricing-booking and /api/create-booking) using the
 -- service_role key (supabaseAdmin), which bypasses RLS and authoritatively
 -- computes pricing, rules, and discounts.
---
--- Direct anonymous PostgREST INSERT access on bookings and booking_items
--- is an unnecessary exposure that allows attackers to insert fake, zero-price,
--- or pre-completed bookings. We drop those anonymous INSERT policies here.
 
--- 2.1 Drop anon direct INSERT on modern bookings table
+-- 2.1 Ensure RLS is enabled and forced on bookings
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bookings FORCE ROW LEVEL SECURITY;
+
+-- 2.2 Ensure RLS is enabled and forced on booking_items
+ALTER TABLE public.booking_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.booking_items FORCE ROW LEVEL SECURITY;
+
+-- 2.3 Drop all public/anonymous insert policies on modern tables
 DROP POLICY IF EXISTS "public_insert_booking" ON public.bookings;
-
--- 2.2 Drop anon direct INSERT on modern booking_items table
+DROP POLICY IF EXISTS "Public can insert bookings" ON public.bookings;
 DROP POLICY IF EXISTS "public_insert_booking_items" ON public.booking_items;
 
--- 2.3 Safely drop anon direct INSERT on legacy quoted "Bookings" table if it exists
+-- 2.4 Revoke table-level INSERT from anon for defense-in-depth
+REVOKE INSERT ON public.bookings FROM anon;
+REVOKE INSERT ON public.booking_items FROM anon;
+
+-- 2.5 Safely handle legacy quoted "Bookings" table if it exists
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename = 'Bookings'
   ) THEN
-    EXECUTE 'DROP POLICY IF EXISTS "public_insert_legacy_booking" ON public."Bookings"';
+    EXECUTE 'ALTER TABLE public."Bookings" ENABLE ROW LEVEL SECURITY;';
+    EXECUTE 'ALTER TABLE public."Bookings" FORCE ROW LEVEL SECURITY;';
+    EXECUTE 'DROP POLICY IF EXISTS "public_insert_legacy_booking" ON public."Bookings";';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can insert bookings" ON public."Bookings";';
+    EXECUTE 'REVOKE INSERT ON public."Bookings" FROM anon;';
   END IF;
 END $$;
