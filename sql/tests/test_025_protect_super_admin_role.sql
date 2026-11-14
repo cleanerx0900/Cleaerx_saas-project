@@ -136,7 +136,7 @@ BEGIN
     RAISE EXCEPTION 'TEST 5 FAILED: Anonymous caller was able to insert super_admin!';
   EXCEPTION
     WHEN OTHERS THEN
-      IF SQLERRM LIKE '%Access denied%' THEN
+      IF SQLERRM LIKE '%Access denied%' OR SQLERRM LIKE '%permission denied%' OR SQLERRM LIKE '%violates row-level security policy%' THEN
         RAISE NOTICE '✓ TEST 5 PASSED: Anonymous PostgREST request was strictly blocked from creating super_admin.';
       ELSE
         RAISE EXCEPTION 'TEST 5 FAILED with unexpected error: %', SQLERRM;

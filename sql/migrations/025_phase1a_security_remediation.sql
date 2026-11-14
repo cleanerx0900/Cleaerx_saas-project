@@ -211,7 +211,7 @@ $$;
 -- Explicit ownership and execution privilege hardening
 ALTER FUNCTION public.protect_super_admin_role() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.protect_super_admin_role() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.protect_super_admin_role() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.protect_super_admin_role() TO authenticated, service_role;
 
 DROP TRIGGER IF EXISTS trg_protect_super_admin_role ON public.users;
 
